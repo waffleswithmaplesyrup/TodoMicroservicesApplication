@@ -1,14 +1,12 @@
 package com.waffles.todo_microservice.TodoService.Service;
 
-import com.waffles.todo_microservice.Feign.AuthMicroservice;
+import com.waffles.todo_microservice.AuthService.AuthService;
 import com.waffles.todo_microservice.Security.TokenService;
-import com.waffles.todo_microservice.StandardResponse.RestResponse;
 import com.waffles.todo_microservice.TodoService.Model.Todo;
 import com.waffles.todo_microservice.TodoService.Model.request.NewTodoRequest;
 import com.waffles.todo_microservice.TodoService.Repository.TodoRepository;
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
@@ -19,17 +17,17 @@ public class TodoService {
 
     private final TodoRepository todoRepository;
     private final TokenService tokenService;
-    private final AuthMicroservice authMicroservice;
+    private final AuthService authService;
 
     @Autowired
     public TodoService(
             TodoRepository todoRepository,
             TokenService tokenService,
-            AuthMicroservice authMicroservice
+            AuthService authService
     ) {
         this.todoRepository = todoRepository;
         this.tokenService = tokenService;
-        this.authMicroservice = authMicroservice;
+        this.authService = authService;
     }
 
     public Todo createNewTodo(NewTodoRequest newTodo, HttpServletRequest request) {
@@ -59,15 +57,7 @@ public class TodoService {
         // TODO: AUTH-MICROSERVICE will find the logged in user and return userId
         String token = tokenService.retrieveToken(request);
 
-        try {
-            ResponseEntity<RestResponse> response = authMicroservice.validateToken(token);
-
-            if(response.getBody() == null || response.getBody().getData() == null) throw new RuntimeException("Unable to retrieve user");
-
-            return response.getBody().getData().toString();
-        } catch (RuntimeException e) {
-            return e.getMessage();
-        }
+        return authService.validateTokenAndReturnUserId(token);
     }
 
 }
