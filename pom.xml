@@ -20,6 +20,7 @@
         <module>todo-microservice</module>
         <module>service-registry</module>
         <module>api-gateway</module>
+        <module>SingPassSimulator</module>
     </modules>
 
     <properties>

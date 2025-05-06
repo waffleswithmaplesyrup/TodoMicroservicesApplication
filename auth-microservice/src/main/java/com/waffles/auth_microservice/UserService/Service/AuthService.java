@@ -1,8 +1,10 @@
 package com.waffles.auth_microservice.UserService.Service;
 
 import com.waffles.auth_microservice.Security.Token.TokenService;
+import com.waffles.auth_microservice.UserService.Enum.Role;
 import com.waffles.auth_microservice.UserService.Model.User;
 import com.waffles.auth_microservice.UserService.Model.request.LoginCredentials;
+import com.waffles.auth_microservice.UserService.Model.response.UserCredentials;
 import com.waffles.auth_microservice.UserService.Repository.UserRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.authentication.AuthenticationManager;
@@ -10,11 +12,23 @@ import org.springframework.security.authentication.UsernamePasswordAuthenticatio
 import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Service;
 
-import java.util.Optional;
-import java.util.UUID;
+import java.util.*;
 
 @Service
 public class AuthService {
+
+    private final List<UserCredentials> militaryStore = new ArrayList<>(List.of(
+            new UserCredentials("lalo@salamanca.com", "S1234567W", "64b21d9f-a165-418c-85b7-2afd5e36409e"),
+            new UserCredentials("jesse@pinkman.com", "S7654321P", "138949a2-68bb-4f46-998c-1f6e28efd738"),
+            new UserCredentials("saul@good.man", "S1928375G", "199964cf-b7fb-4487-8a7c-0163e6c703d0")
+    ));
+
+    private final List<String> singpassStore = new ArrayList<>(List.of(
+            "0f1c9b2f-c155-45d5-804d-a4506e4c054f",
+            "64b21d9f-a165-418c-85b7-2afd5e36409e",
+            "138949a2-68bb-4f46-998c-1f6e28efd738",
+            "199964cf-b7fb-4487-8a7c-0163e6c703d0"
+    ));
 
     private final AuthenticationManager authManager;    /// make sure to have this configured in SecurityConfig
     private final TokenService tokenService;
@@ -68,5 +82,58 @@ public class AuthService {
         if(userOptional.isEmpty()) throw new RuntimeException("User not found");
 
         return userOptional.get().getId();
+    }
+
+    /// SINGPASS
+    public String loginUsingSingpass() {
+
+        /// call Singpass API to authenticate user and return user uuid
+        UUID uuid = singpassAuthentication();
+
+        if(uuid == null || uuid.toString().isEmpty()) throw new RuntimeException("Unable to log in using Singpass");
+
+        /// call Military datastore passing the user uuid to return user info like name and email
+        UserCredentials userCredentials = getUserCredentialsFromMilitaryStore(uuid);
+
+        String email = userCredentials.getEmail();
+        String nric = userCredentials.getNric();
+
+        // after user successfully log in via Singpass
+        // check if the user is in our db
+        Optional<User> userOptional = userRepository.findByEmail(email);
+        // TODO: if uuid returned from Singpass is unique to each user, can we find user by uuid?
+        //       Optional<User> userOptional = userRepository.findById(uuid);
+
+        if(userOptional.isEmpty()) {
+            // user doesn't exist in our db
+            // save their credentials into db
+            userRepository.save(new User(uuid, email, nric, Role.USER));
+            // their nric is their password for now
+        }
+
+        /// at this point, user is already authenticated and can now access endpoints
+
+        // generate a token
+        return tokenService.generateToken(email);
+    }
+
+    private UserCredentials getUserCredentialsFromMilitaryStore(UUID uuid) {
+        /// call Military datastore passing the user uuid to return user info like name and email
+//        Optional<UserCredentials> userCredentialsOptional = militaryDbSimulator.findUser(uuid);
+        Optional<UserCredentials> userCredentialsOptional = militaryStore.stream().filter(user -> Objects.equals(user.getUuid(), uuid.toString())).findFirst();
+        // TODO: make sure to catch exceptions
+        if(userCredentialsOptional.isEmpty()) throw new RuntimeException("No user found");
+
+        return userCredentialsOptional.get();
+    }
+
+    private UUID singpassAuthentication() {
+        /// call Singpass API to authenticate user and return user uuid
+//        String uuid = singpassSimulator.returnUuid();
+        String uuid = singpassStore.get(0);
+        // TODO: make sure to catch exceptions
+        if(uuid == null || uuid.isEmpty()) throw new RuntimeException("Unable to log in using Singpass");
+
+        return UUID.fromString(uuid);
     }
 }

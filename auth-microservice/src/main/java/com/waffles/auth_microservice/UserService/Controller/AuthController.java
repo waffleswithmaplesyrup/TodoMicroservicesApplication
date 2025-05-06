@@ -26,7 +26,7 @@ public class AuthController {
         this.authService = authService;
     }
 
-    @PostMapping("/login")
+    @PostMapping("/login/password")
     public ResponseEntity<RestResponse> loginUsingCredentials(@RequestBody LoginCredentials loginCredentials) {
 
         try {
@@ -66,6 +66,24 @@ public class AuthController {
                     new RestResponse().readSuccess(
                             authService.validateToken(token)
                     )
+            );
+        } catch (RuntimeException e) {
+            return ResponseEntity.badRequest().body(
+                    new RestResponse().failure(e.getMessage())
+            );
+        }
+    }
+
+    /// SINGPASS AUTH
+    @PostMapping("/login")
+    public ResponseEntity<RestResponse> loginUsingSingpass() {
+
+        try {
+            return new ResponseEntity<>(
+                    new RestResponse().createSuccess(
+                            authService.loginUsingSingpass()
+                    ),
+                    HttpStatus.CREATED
             );
         } catch (RuntimeException e) {
             return ResponseEntity.badRequest().body(
