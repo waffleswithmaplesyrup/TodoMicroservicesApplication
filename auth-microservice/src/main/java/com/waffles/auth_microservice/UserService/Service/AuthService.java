@@ -1,12 +1,15 @@
 package com.waffles.auth_microservice.UserService.Service;
 
 import com.waffles.auth_microservice.Security.Token.TokenService;
+import com.waffles.auth_microservice.SingpassSimulator.SingpassService;
 import com.waffles.auth_microservice.UserService.Enum.Role;
 import com.waffles.auth_microservice.UserService.Model.User;
 import com.waffles.auth_microservice.UserService.Model.request.LoginCredentials;
+import com.waffles.auth_microservice.UserService.Model.request.SingpassLogin;
 import com.waffles.auth_microservice.UserService.Model.response.UserCredentials;
 import com.waffles.auth_microservice.UserService.Repository.UserRepository;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.json.JsonParserFactory;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
@@ -33,16 +36,19 @@ public class AuthService {
     private final AuthenticationManager authManager;    /// make sure to have this configured in SecurityConfig
     private final TokenService tokenService;
     private final UserRepository userRepository;
+    private final SingpassService singpassService;
 
     @Autowired
     public AuthService(
             AuthenticationManager authManager,
             TokenService tokenService,
-            UserRepository userRepository
+            UserRepository userRepository,
+            SingpassService singpassService
     ) {
         this.authManager = authManager;
         this.tokenService = tokenService;
         this.userRepository = userRepository;
+        this.singpassService = singpassService;
     }
 
     public String loginUsingCredentials(LoginCredentials loginCredentials) {
@@ -85,10 +91,10 @@ public class AuthService {
     }
 
     /// SINGPASS
-    public String loginUsingSingpass() {
+    public String loginUsingSingpass(SingpassLogin singpassLogin) {
 
         /// call Singpass API to authenticate user and return user uuid
-        UUID uuid = singpassAuthentication();
+        UUID uuid = singpassAuthentication(singpassLogin);
 
         if(uuid == null || uuid.toString().isEmpty()) throw new RuntimeException("Unable to log in using Singpass");
 
@@ -127,13 +133,15 @@ public class AuthService {
         return userCredentialsOptional.get();
     }
 
-    private UUID singpassAuthentication() {
+    private UUID singpassAuthentication(SingpassLogin singpassLogin) {
         /// call Singpass API to authenticate user and return user uuid
-//        String uuid = singpassSimulator.returnUuid();
-        String uuid = singpassStore.get(0);
-        // TODO: make sure to catch exceptions
-        if(uuid == null || uuid.isEmpty()) throw new RuntimeException("Unable to log in using Singpass");
+        try {
+            String uuid = singpassService.authenticateUsingSingpassAndReturnUserId(singpassLogin);
+            return UUID.fromString(uuid);
+        } catch (RuntimeException e) {
+            if(e.getMessage().contains("503")) throw new RuntimeException("Singpass service down :(");
 
-        return UUID.fromString(uuid);
+            return null;
+        }
     }
 }

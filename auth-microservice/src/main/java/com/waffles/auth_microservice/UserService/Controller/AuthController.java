@@ -3,6 +3,7 @@ package com.waffles.auth_microservice.UserService.Controller;
 import com.waffles.auth_microservice.StandardResponse.RestResponse;
 import com.waffles.auth_microservice.UserService.Model.request.LoginCredentials;
 import com.waffles.auth_microservice.UserService.Model.request.NewUserRequest;
+import com.waffles.auth_microservice.UserService.Model.request.SingpassLogin;
 import com.waffles.auth_microservice.UserService.Service.AuthService;
 import com.waffles.auth_microservice.UserService.Service.UserService;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -76,12 +77,12 @@ public class AuthController {
 
     /// SINGPASS AUTH
     @PostMapping("/login")
-    public ResponseEntity<RestResponse> loginUsingSingpass() {
+    public ResponseEntity<RestResponse> loginUsingSingpass(@RequestBody SingpassLogin singpassLogin) {
 
         try {
             return new ResponseEntity<>(
                     new RestResponse().createSuccess(
-                            authService.loginUsingSingpass()
+                            authService.loginUsingSingpass(singpassLogin)
                     ),
                     HttpStatus.CREATED
             );
